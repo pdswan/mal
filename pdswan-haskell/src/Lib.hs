@@ -36,6 +36,7 @@ malShow :: MalExp -> String
 malShow (MalList subexps) = "(" ++ (intercalate " " $ map malShow subexps) ++ ")"
 malShow (MalNumber i)     = show i
 malShow (MalSymbol sym)   = sym
+malShow (MalString s)     = s
 
 malRead = parse parseMalExp ""
   where
@@ -65,14 +66,21 @@ malRead = parse parseMalExp ""
     parseMalExp :: Parser MalExp
     parseMalExp = do
       ignoreSpace
-      exp <- choice [parseMalList, parseMalNumber, parseMalSymbol]
+      exp <- choice [parseMalList, parseMalString, parseMalNumber, parseMalSymbol]
       ignoreSpace
       return exp
-
 
 parseMalString :: Parser MalExp
 parseMalString = do
   char '"'
-  str <- manyTill anyChar (char '"')
-  return $ MalString str
+  strs <- many character
+  char '"'
+  return $ MalString $ concat strs
+  where
+    {- fmap return turns Parser Char in Monad m => Parser m Char which.
+     - since escapeQuote is Parser [Char] the m becomes [] -}
+    character = choice [(fmap return notEscapedQuote), escapedQuote]
+    escapedQuote = string "\\\""
+    notEscapedQuote :: Parser Char
+    notEscapedQuote = noneOf "\\\""
 
