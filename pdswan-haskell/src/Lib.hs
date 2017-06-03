@@ -2,7 +2,6 @@ module Lib
     ( repl
     , malRead
     , malShow
-    , parseMalString
     ) where
 
 import System.IO (stdout, hFlush)
@@ -70,17 +69,17 @@ malRead = parse parseMalExp ""
       ignoreSpace
       return exp
 
-parseMalString :: Parser MalExp
-parseMalString = do
-  char '"'
-  strs <- many character
-  char '"'
-  return $ MalString $ concat strs
-  where
-    {- fmap return turns Parser Char in Monad m => Parser m Char which.
-     - since escapeQuote is Parser [Char] the m becomes [] -}
-    character = choice [(fmap return notEscapedQuote), escapedQuote]
-    escapedQuote = string "\\\""
-    notEscapedQuote :: Parser Char
-    notEscapedQuote = noneOf "\\\""
+    parseMalString :: Parser MalExp
+    parseMalString = do
+      char '"'
+      strs <- many character
+      char '"'
+      return $ MalString $ concat strs
+      where
+        {- fmap return turns Parser Char in Monad m => Parser m Char which.
+         - since escapeQuote is Parser [Char] the m becomes [] -}
+        character = choice [(fmap return notEscapedQuote), escapedQuote]
+        escapedQuote = string "\\\""
+        notEscapedQuote :: Parser Char
+        notEscapedQuote = noneOf "\\\""
 
