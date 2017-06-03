@@ -1,15 +1,27 @@
 module Lib
-    ( repl
+    ( loop
+    , malReadEvalPrint
+    , malReadPrint
     , malRead
-    , malShow
+    , malEval
+    , malPrint
+    , MalEnv(MalEnv)
+    , MalExp(..)
+    , MalReplError(EvalError)
     ) where
 
 import System.IO (stdout, hFlush)
-import Control.Monad (forever)
+import Control.Monad (forever, mapM, join)
 
 import Text.Parsec.String (Parser)
 import Text.Parsec (anyChar, parse, many, many1, manyTill, digit, oneOf, noneOf, choice, char, string)
+import qualified Text.Parsec.Error (ParseError)
 import Data.List (intercalate)
+import Data.Map (Map)
+import qualified Data.Map as Map
+
+type MalFn = [MalExp] -> Either MalReplError MalExp
+data MalEnv = MalEnv (Map String MalFn)
 
 data MalExp = MalNumber Int
   | MalString String
@@ -17,25 +29,53 @@ data MalExp = MalNumber Int
   | MalList [MalExp]
   deriving Show
 
-repl :: IO ()
-repl = do
-  forever loop
+data MalReplError = EnvError String
+  | EvalError String
+  | ParseError Text.Parsec.Error.ParseError
+  deriving Show
+
+loop :: (String -> String) -> IO ()
+loop f = do
+  forever go
   where
-    loop :: IO ()
-    loop = do
+    go :: IO ()
+    go = do
       putStr "user> "
       hFlush stdout
       userInput <- getLine
-      putStrLn $ rep userInput
+      putStrLn $ f userInput
 
-    rep :: String -> String
-    rep input = either show malShow (malRead input)
+malEnvLookup :: String -> MalEnv -> Either MalReplError MalFn
+malEnvLookup key (MalEnv map) = case (Map.lookup key map) of
+  Nothing -> Left $ EnvError ("Symbol not found " ++ key)
+  (Just f) -> Right f
 
-malShow :: MalExp -> String
-malShow (MalList subexps) = "(" ++ (intercalate " " $ map malShow subexps) ++ ")"
-malShow (MalNumber i)     = show i
-malShow (MalSymbol sym)   = sym
-malShow (MalString s)     = s
+malReadEvalPrint :: MalEnv -> String -> String
+malReadEvalPrint malEnv input = do
+  either show malPrint (read input >>= eval)
+  where
+    eval :: MalExp -> Either MalReplError MalExp
+    eval = malEval malEnv
+
+    read :: String -> Either MalReplError MalExp
+    read input = case (malRead input) of
+      (Left e)   -> Left $ ParseError e
+      (Right ok) -> return ok
+
+malEval :: MalEnv -> MalExp -> Either MalReplError MalExp
+malEval malEnv (MalList ((MalSymbol sym):exps)) = do
+  f <- malEnvLookup sym malEnv
+  join $ f <$> (mapM (malEval malEnv) exps)
+malEval _ exp         = return exp
+
+malReadPrint :: String -> String
+malReadPrint input = either show malPrint (malRead input)
+
+malPrint :: MalExp -> String
+malPrint (MalList subexps) = "(" ++ (intercalate " " $ map malPrint subexps) ++ ")"
+malPrint (MalNumber i)     = show i
+malPrint (MalSymbol sym)   = sym
+malPrint (MalString s)     = "\"" ++ s ++ "\""
 
 malRead = parse parseMalExp ""
   where

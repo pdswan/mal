@@ -1,3 +1,6 @@
+step2_eval:
+	stack build pdswan-haskell:step2_eval
+
 step1_read_print:
 	stack build pdswan-haskell:step1_read_print
 
