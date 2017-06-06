@@ -14,7 +14,7 @@ import System.IO (stdout, hFlush)
 import Control.Monad (forever, mapM, join)
 
 import Text.Parsec.String (Parser)
-import Text.Parsec (anyChar, parse, many, many1, manyTill, digit, oneOf, noneOf, choice, char, string)
+import Text.Parsec (anyChar, parse, many, many1, manyTill, digit, oneOf, noneOf, choice, char, string, try)
 import qualified Text.Parsec.Error (ParseError)
 import Data.List (intercalate)
 import Data.Map (Map)
@@ -83,7 +83,10 @@ malRead = parse parseMalExp ""
     spaceChars = " ,"
 
     parseInt :: Parser Int
-    parseInt = read <$> (many1 digit)
+    parseInt = read <$> choice [positive, try negative]
+      where
+        positive = many1 digit
+        negative = char '-' >> positive >>= return . ("-" ++)
 
     ignoreSpace :: Parser [Char]
     ignoreSpace = many $ oneOf spaceChars

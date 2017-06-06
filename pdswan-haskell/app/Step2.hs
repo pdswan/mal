@@ -8,9 +8,20 @@ main :: IO ()
 main = Lib.loop $ Lib.malReadEvalPrint env
   where
     env :: MalEnv
-    env = MalEnv $ Map.fromList [("+", plus)]
+    env = MalEnv $ Map.fromList [("+", add), ("-", sub), ("*", mul), ("/", div)]
 
-    plus :: [MalExp] -> Either MalReplError MalExp
-    plus [(MalNumber x), (MalNumber y)] = Right $ MalNumber (x + y)
-    plus _ = Left $ EvalError "Unexpected arguments to plus"
+    add :: [MalExp] -> Either MalReplError MalExp
+    add [(MalNumber x), (MalNumber y)] = Right $ MalNumber (x + y)
+    add _ = Left $ EvalError "Unexpected arguments to add"
 
+    sub :: [MalExp] -> Either MalReplError MalExp
+    sub [(MalNumber x), (MalNumber y)] = Right $ MalNumber (x - y)
+    sub _ = Left $ EvalError "Unexpected arguments to sub"
+
+    mul :: [MalExp] -> Either MalReplError MalExp
+    mul [(MalNumber x), (MalNumber y)] = Right $ MalNumber (x * y)
+    mul _ = Left $ EvalError "Unexpected arguments to mul"
+
+    div :: [MalExp] -> Either MalReplError MalExp
+    div [(MalNumber x), (MalNumber y)] = Right $ MalNumber (round ((fromIntegral x) / (fromIntegral y)))
+    div _ = Left $ EvalError "Unexpected arguments to div"
